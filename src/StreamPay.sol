@@ -41,8 +41,7 @@ contract StreamPay {
 
     mapping(uint256 => address) public companyOwner;
 
-    mapping(uint256 => mapping(address => bool))
-        public registeredEmployees;
+    mapping(uint256 => mapping(address => bool)) public registeredEmployees;
 
     mapping(address => uint256[]) private employerStreamIds;
 
@@ -54,16 +53,9 @@ contract StreamPay {
     // EVENTS
     // ------------------------------------------------------------
 
-    event CompanyRegistered(
-        uint256 indexed companyId,
-        address indexed employer
-    );
+    event CompanyRegistered(uint256 indexed companyId, address indexed employer);
 
-    event EmployeeRegistered(
-        uint256 indexed companyId,
-        address indexed employer,
-        address indexed employee
-    );
+    event EmployeeRegistered(uint256 indexed companyId, address indexed employer, address indexed employee);
 
     event StreamCreated(
         uint256 indexed streamId,
@@ -91,14 +83,9 @@ contract StreamPay {
         uint256 employerRefund
     );
 
-    event StreamCompleted(
-        uint256 indexed streamId
-    );
+    event StreamCompleted(uint256 indexed streamId);
 
-    event AdminFeesClaimed(
-        address indexed admin,
-        uint256 amount
-    );
+    event AdminFeesClaimed(address indexed admin, uint256 amount);
 
     // ------------------------------------------------------------
     // MODIFIERS
@@ -115,10 +102,7 @@ contract StreamPay {
     }
 
     modifier streamExists(uint256 streamId) {
-        require(
-            streams[streamId].id != 0,
-            "Stream does not exist"
-        );
+        require(streams[streamId].id != 0, "Stream does not exist");
 
         _;
     }
@@ -135,13 +119,8 @@ contract StreamPay {
     // EMPLOYEE REGISTRATION
     // ------------------------------------------------------------
 
-    function registerEmployee(
-        address employee
-    ) external {
-        require(
-            employee != address(0),
-            "Invalid employee address"
-        );
+    function registerEmployee(address employee) external {
+        require(employee != address(0), "Invalid employee address");
 
         uint256 companyId = companyIdOf[msg.sender];
 
@@ -159,64 +138,32 @@ contract StreamPay {
 
             companyOwner[companyId] = msg.sender;
 
-            emit CompanyRegistered(
-                companyId,
-                msg.sender
-            );
+            emit CompanyRegistered(companyId, msg.sender);
         }
 
-        require(
-            !registeredEmployees[companyId][employee],
-            "Employee already registered"
-        );
+        require(!registeredEmployees[companyId][employee], "Employee already registered");
 
         registeredEmployees[companyId][employee] = true;
 
-        emit EmployeeRegistered(
-            companyId,
-            msg.sender,
-            employee
-        );
+        emit EmployeeRegistered(companyId, msg.sender, employee);
     }
 
     // ------------------------------------------------------------
     // CREATE STREAM
     // ------------------------------------------------------------
 
-    function createStream(
-        address payable employee,
-        uint256 duration
-    )
-        external
-        payable
-        returns (uint256 streamId)
-    {
-        require(
-            msg.value > 0,
-            "ETH amount must be greater than zero"
-        );
+    function createStream(address payable employee, uint256 duration) external payable returns (uint256 streamId) {
+        require(msg.value > 0, "ETH amount must be greater than zero");
 
-        require(
-            duration > 15,
-            "Duration must be greater than 15 seconds"
-        );
+        require(duration > 15, "Duration must be greater than 15 seconds");
 
-        require(
-            employee != address(0),
-            "Invalid employee address"
-        );
+        require(employee != address(0), "Invalid employee address");
 
         uint256 companyId = companyIdOf[msg.sender];
 
-        require(
-            companyId != 0,
-            "Employer has no company"
-        );
+        require(companyId != 0, "Employer has no company");
 
-        require(
-            registeredEmployees[companyId][employee],
-            "Employee is not registered"
-        );
+        require(registeredEmployees[companyId][employee], "Employee is not registered");
 
         streamId = nextStreamId;
 
@@ -239,29 +186,14 @@ contract StreamPay {
 
         employeeStreamIds[employee].push(streamId);
 
-        emit StreamCreated(
-            streamId,
-            companyId,
-            msg.sender,
-            employee,
-            msg.value,
-            block.timestamp,
-            duration
-        );
+        emit StreamCreated(streamId, companyId, msg.sender, employee, msg.value, block.timestamp, duration);
     }
 
     // ------------------------------------------------------------
     // STREAMING / VESTING CALCULATION
     // ------------------------------------------------------------
 
-    function getUnlockedAmount(
-        uint256 streamId
-    )
-        public
-        view
-        streamExists(streamId)
-        returns (uint256)
-    {
+    function getUnlockedAmount(uint256 streamId) public view streamExists(streamId) returns (uint256) {
         Stream storage stream = streams[streamId];
 
         /*
@@ -273,8 +205,7 @@ contract StreamPay {
             return stream.totalWithdrawn;
         }
 
-        uint256 endTime =
-            stream.startTime + stream.duration;
+        uint256 endTime = stream.startTime + stream.duration;
 
         /*
             When stream has reached the end,
@@ -285,8 +216,7 @@ contract StreamPay {
             return stream.totalDeposit;
         }
 
-        uint256 elapsedTime =
-            block.timestamp - stream.startTime;
+        uint256 elapsedTime = block.timestamp - stream.startTime;
 
         /*
             Required assignment formula:
@@ -297,26 +227,18 @@ contract StreamPay {
                       Duration
         */
 
-        return (
-            stream.totalDeposit * elapsedTime
-        ) / stream.duration;
+        return (stream.totalDeposit * elapsedTime) / stream.duration;
     }
 
     // ------------------------------------------------------------
     // VIEW CLAIMABLE SALARY
     // ------------------------------------------------------------
 
-    function getClaimableAmount(
-        uint256 streamId
-    )
+    function getClaimableAmount(uint256 streamId)
         external
         view
         streamExists(streamId)
-        returns (
-            uint256 grossAmount,
-            uint256 fee,
-            uint256 employeeAmount
-        )
+        returns (uint256 grossAmount, uint256 fee, uint256 employeeAmount)
     {
         Stream storage stream = streams[streamId];
 
@@ -324,66 +246,41 @@ contract StreamPay {
             return (0, 0, 0);
         }
 
-        uint256 unlocked =
-            getUnlockedAmount(streamId);
+        uint256 unlocked = getUnlockedAmount(streamId);
 
         if (unlocked <= stream.totalWithdrawn) {
             return (0, 0, 0);
         }
 
-        grossAmount =
-            unlocked - stream.totalWithdrawn;
+        grossAmount = unlocked - stream.totalWithdrawn;
 
-        uint256 newTotalWithdrawn =
-            stream.totalWithdrawn + grossAmount;
+        uint256 newTotalWithdrawn = stream.totalWithdrawn + grossAmount;
 
-        uint256 totalFeeRequired =
-            newTotalWithdrawn / 100;
+        uint256 totalFeeRequired = newTotalWithdrawn / 100;
 
-        fee =
-            totalFeeRequired -
-            stream.totalFeeCharged;
+        fee = totalFeeRequired - stream.totalFeeCharged;
 
-        employeeAmount =
-            grossAmount - fee;
+        employeeAmount = grossAmount - fee;
     }
 
     // ------------------------------------------------------------
     // EMPLOYEE WITHDRAWAL
     // ------------------------------------------------------------
 
-    function withdraw(
-        uint256 streamId
-    )
-        external
-        nonReentrant
-        streamExists(streamId)
-    {
+    function withdraw(uint256 streamId) external nonReentrant streamExists(streamId) {
         Stream storage stream = streams[streamId];
 
-        require(
-            stream.status == StreamStatus.Active,
-            "Stream is closed"
-        );
+        require(stream.status == StreamStatus.Active, "Stream is closed");
 
-        require(
-            msg.sender == stream.employee,
-            "Only employee can withdraw"
-        );
+        require(msg.sender == stream.employee, "Only employee can withdraw");
 
-        uint256 unlocked =
-            getUnlockedAmount(streamId);
+        uint256 unlocked = getUnlockedAmount(streamId);
 
-        require(
-            unlocked > stream.totalWithdrawn,
-            "Nothing available to withdraw"
-        );
+        require(unlocked > stream.totalWithdrawn, "Nothing available to withdraw");
 
-        uint256 grossAmount =
-            unlocked - stream.totalWithdrawn;
+        uint256 grossAmount = unlocked - stream.totalWithdrawn;
 
-        uint256 newTotalWithdrawn =
-            stream.totalWithdrawn + grossAmount;
+        uint256 newTotalWithdrawn = stream.totalWithdrawn + grossAmount;
 
         /*
             1% cumulative fee.
@@ -393,217 +290,116 @@ contract StreamPay {
             even if an employee makes several withdrawals.
         */
 
-        uint256 totalFeeRequired =
-            newTotalWithdrawn / 100;
+        uint256 totalFeeRequired = newTotalWithdrawn / 100;
 
-        uint256 fee =
-            totalFeeRequired -
-            stream.totalFeeCharged;
+        uint256 fee = totalFeeRequired - stream.totalFeeCharged;
 
-        uint256 employeeAmount =
-            grossAmount - fee;
+        uint256 employeeAmount = grossAmount - fee;
 
         // Update state before transferring ETH.
 
-        stream.totalWithdrawn =
-            newTotalWithdrawn;
+        stream.totalWithdrawn = newTotalWithdrawn;
 
-        stream.totalFeeCharged =
-            totalFeeRequired;
+        stream.totalFeeCharged = totalFeeRequired;
 
         adminWithdrawable += fee;
 
-        if (
-            stream.totalWithdrawn ==
-            stream.totalDeposit
-        ) {
+        if (stream.totalWithdrawn == stream.totalDeposit) {
             stream.status = StreamStatus.Closed;
 
             emit StreamCompleted(streamId);
         }
 
-        (bool success, ) =
-            stream.employee.call{
-                value: employeeAmount
-            }("");
+        (bool success,) = stream.employee.call{value: employeeAmount}("");
 
-        require(
-            success,
-            "Employee transfer failed"
-        );
+        require(success, "Employee transfer failed");
 
-        emit StreamWithdrawn(
-            streamId,
-            stream.employee,
-            grossAmount,
-            fee,
-            employeeAmount
-        );
+        emit StreamWithdrawn(streamId, stream.employee, grossAmount, fee, employeeAmount);
     }
 
     // ------------------------------------------------------------
     // CANCEL STREAM
     // ------------------------------------------------------------
 
-    function cancelStream(
-        uint256 streamId
-    )
-        external
-        nonReentrant
-        streamExists(streamId)
-    {
+    function cancelStream(uint256 streamId) external nonReentrant streamExists(streamId) {
         Stream storage stream = streams[streamId];
 
-        require(
-            stream.status == StreamStatus.Active,
-            "Stream is already closed"
-        );
+        require(stream.status == StreamStatus.Active, "Stream is already closed");
 
-        require(
-            msg.sender == stream.employer ||
-            msg.sender == stream.employee,
-            "Not authorized"
-        );
+        require(msg.sender == stream.employer || msg.sender == stream.employee, "Not authorized");
 
-        uint256 unlocked =
-            getUnlockedAmount(streamId);
+        uint256 unlocked = getUnlockedAmount(streamId);
 
-        uint256 vestedRemaining =
-            unlocked - stream.totalWithdrawn;
+        uint256 vestedRemaining = unlocked - stream.totalWithdrawn;
 
-        uint256 newTotalWithdrawn =
-            unlocked;
+        uint256 newTotalWithdrawn = unlocked;
 
-        uint256 totalFeeRequired =
-            newTotalWithdrawn / 100;
+        uint256 totalFeeRequired = newTotalWithdrawn / 100;
 
-        uint256 fee =
-            totalFeeRequired -
-            stream.totalFeeCharged;
+        uint256 fee = totalFeeRequired - stream.totalFeeCharged;
 
-        uint256 employeeAmount =
-            vestedRemaining - fee;
+        uint256 employeeAmount = vestedRemaining - fee;
 
-        uint256 employerRefund =
-            stream.totalDeposit - unlocked;
+        uint256 employerRefund = stream.totalDeposit - unlocked;
 
         // Close the stream before sending ETH.
 
-        stream.totalWithdrawn =
-            newTotalWithdrawn;
+        stream.totalWithdrawn = newTotalWithdrawn;
 
-        stream.totalFeeCharged =
-            totalFeeRequired;
+        stream.totalFeeCharged = totalFeeRequired;
 
-        stream.status =
-            StreamStatus.Closed;
+        stream.status = StreamStatus.Closed;
 
         adminWithdrawable += fee;
 
         if (employeeAmount > 0) {
-            (bool employeeSuccess, ) =
-                stream.employee.call{
-                    value: employeeAmount
-                }("");
+            (bool employeeSuccess,) = stream.employee.call{value: employeeAmount}("");
 
-            require(
-                employeeSuccess,
-                "Employee transfer failed"
-            );
+            require(employeeSuccess, "Employee transfer failed");
         }
 
         if (employerRefund > 0) {
-            (bool employerSuccess, ) =
-                stream.employer.call{
-                    value: employerRefund
-                }("");
+            (bool employerSuccess,) = stream.employer.call{value: employerRefund}("");
 
-            require(
-                employerSuccess,
-                "Employer refund failed"
-            );
+            require(employerSuccess, "Employer refund failed");
         }
 
-        emit StreamCancelled(
-            streamId,
-            vestedRemaining,
-            fee,
-            employeeAmount,
-            employerRefund
-        );
+        emit StreamCancelled(streamId, vestedRemaining, fee, employeeAmount, employerRefund);
     }
 
     // ------------------------------------------------------------
     // ADMIN CLAIMS PROTOCOL FEES
     // ------------------------------------------------------------
 
-    function claimAdminFees()
-        external
-        nonReentrant
-    {
-        require(
-            msg.sender == admin,
-            "Only admin"
-        );
+    function claimAdminFees() external nonReentrant {
+        require(msg.sender == admin, "Only admin");
 
-        uint256 amount =
-            adminWithdrawable;
+        uint256 amount = adminWithdrawable;
 
-        require(
-            amount > 0,
-            "No fees available"
-        );
+        require(amount > 0, "No fees available");
 
         adminWithdrawable = 0;
 
-        (bool success, ) =
-            payable(admin).call{
-                value: amount
-            }("");
+        (bool success,) = payable(admin).call{value: amount}("");
 
-        require(
-            success,
-            "Admin transfer failed"
-        );
+        require(success, "Admin transfer failed");
 
-        emit AdminFeesClaimed(
-            admin,
-            amount
-        );
+        emit AdminFeesClaimed(admin, amount);
     }
 
     // ------------------------------------------------------------
     // FRONTEND GETTERS
     // ------------------------------------------------------------
 
-    function getStream(
-        uint256 streamId
-    )
-        external
-        view
-        streamExists(streamId)
-        returns (Stream memory)
-    {
+    function getStream(uint256 streamId) external view streamExists(streamId) returns (Stream memory) {
         return streams[streamId];
     }
 
-    function getEmployerStreamIds(
-        address employer
-    )
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getEmployerStreamIds(address employer) external view returns (uint256[] memory) {
         return employerStreamIds[employer];
     }
 
-    function getEmployeeStreamIds(
-        address employee
-    )
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getEmployeeStreamIds(address employee) external view returns (uint256[] memory) {
         return employeeStreamIds[employee];
     }
 }
