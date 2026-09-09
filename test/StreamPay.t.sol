@@ -37,16 +37,10 @@ contract StreamPayTest is Test {
         streamPay.registerEmployee(employee);
     }
 
-    function _createStream(
-        uint256 amount,
-        uint256 duration
-    ) internal returns (uint256) {
+    function _createStream(uint256 amount, uint256 duration) internal returns (uint256) {
         vm.prank(employer);
 
-        return streamPay.createStream{value: amount}(
-            payable(employee),
-            duration
-        );
+        return streamPay.createStream{value: amount}(payable(employee), duration);
     }
 
     // ---------------------------------------------------------
@@ -66,12 +60,7 @@ contract StreamPayTest is Test {
 
         assertEq(companyId, 1);
 
-        assertTrue(
-            streamPay.registeredEmployees(
-                companyId,
-                employee
-            )
-        );
+        assertTrue(streamPay.registeredEmployees(companyId, employee));
     }
 
     // ---------------------------------------------------------
@@ -81,14 +70,9 @@ contract StreamPayTest is Test {
     function testCannotCreateZeroETHStream() public {
         vm.prank(employer);
 
-        vm.expectRevert(
-            bytes("ETH amount must be greater than zero")
-        );
+        vm.expectRevert(bytes("ETH amount must be greater than zero"));
 
-        streamPay.createStream{value: 0}(
-            payable(employee),
-            100
-        );
+        streamPay.createStream{value: 0}(payable(employee), 100);
     }
 
     // ---------------------------------------------------------
@@ -98,16 +82,9 @@ contract StreamPayTest is Test {
     function testDurationMustBeGreaterThan15Seconds() public {
         vm.prank(employer);
 
-        vm.expectRevert(
-            bytes(
-                "Duration must be greater than 15 seconds"
-            )
-        );
+        vm.expectRevert(bytes("Duration must be greater than 15 seconds"));
 
-        streamPay.createStream{value: 1 ether}(
-            payable(employee),
-            15
-        );
+        streamPay.createStream{value: 1 ether}(payable(employee), 15);
     }
 
     // ---------------------------------------------------------
@@ -115,44 +92,24 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testEmployerCanCreateStream() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         assertEq(stream.id, 1);
         assertEq(stream.companyId, 1);
 
-        assertEq(
-            stream.employer,
-            employer
-        );
+        assertEq(stream.employer, employer);
 
-        assertEq(
-            stream.employee,
-            employee
-        );
+        assertEq(stream.employee, employee);
 
-        assertEq(
-            stream.totalDeposit,
-            10 ether
-        );
+        assertEq(stream.totalDeposit, 10 ether);
 
-        assertEq(
-            stream.duration,
-            100
-        );
+        assertEq(stream.duration, 100);
 
-        assertEq(
-            stream.totalWithdrawn,
-            0
-        );
+        assertEq(stream.totalWithdrawn, 0);
 
-        assertEq(
-            uint256(stream.status),
-            uint256(StreamPay.StreamStatus.Active)
-        );
+        assertEq(uint256(stream.status), uint256(StreamPay.StreamStatus.Active));
     }
 
     // ---------------------------------------------------------
@@ -160,22 +117,16 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testHalfwayUnlocksExactlyHalfSalary() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         // Move blockchain time forward 50 seconds.
         vm.warp(stream.startTime + 50);
 
-        uint256 unlocked =
-            streamPay.getUnlockedAmount(streamId);
+        uint256 unlocked = streamPay.getUnlockedAmount(streamId);
 
-        assertEq(
-            unlocked,
-            5 ether
-        );
+        assertEq(unlocked, 5 ether);
     }
 
     // ---------------------------------------------------------
@@ -183,21 +134,15 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testFullSalaryUnlocksAtEnd() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         vm.warp(stream.startTime + 100);
 
-        uint256 unlocked =
-            streamPay.getUnlockedAmount(streamId);
+        uint256 unlocked = streamPay.getUnlockedAmount(streamId);
 
-        assertEq(
-            unlocked,
-            10 ether
-        );
+        assertEq(unlocked, 10 ether);
     }
 
     // ---------------------------------------------------------
@@ -205,16 +150,13 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testPartialWithdrawalAndOnePercentFee() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         vm.warp(stream.startTime + 50);
 
-        uint256 employeeBalanceBefore =
-            employee.balance;
+        uint256 employeeBalanceBefore = employee.balance;
 
         vm.prank(employee);
         streamPay.withdraw(streamId);
@@ -223,35 +165,19 @@ contract StreamPayTest is Test {
         uint256 grossAmount = 5 ether;
 
         // Exactly 1%.
-        uint256 expectedFee =
-            grossAmount / 100;
+        uint256 expectedFee = grossAmount / 100;
 
-        uint256 expectedEmployeeAmount =
-            grossAmount - expectedFee;
+        uint256 expectedEmployeeAmount = grossAmount - expectedFee;
 
-        assertEq(
-            employee.balance -
-                employeeBalanceBefore,
-            expectedEmployeeAmount
-        );
+        assertEq(employee.balance - employeeBalanceBefore, expectedEmployeeAmount);
 
-        assertEq(
-            streamPay.adminWithdrawable(),
-            expectedFee
-        );
+        assertEq(streamPay.adminWithdrawable(), expectedFee);
 
-        StreamPay.Stream memory updated =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory updated = streamPay.getStream(streamId);
 
-        assertEq(
-            updated.totalWithdrawn,
-            5 ether
-        );
+        assertEq(updated.totalWithdrawn, 5 ether);
 
-        assertEq(
-            updated.totalFeeCharged,
-            expectedFee
-        );
+        assertEq(updated.totalFeeCharged, expectedFee);
     }
 
     // ---------------------------------------------------------
@@ -259,14 +185,11 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testMultipleWithdrawalsStillChargeExactlyOnePercent() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
-        uint256 employeeBalanceBefore =
-            employee.balance;
+        uint256 employeeBalanceBefore = employee.balance;
 
         // First withdrawal at 25%.
         vm.warp(stream.startTime + 25);
@@ -280,22 +203,13 @@ contract StreamPayTest is Test {
         vm.prank(employee);
         streamPay.withdraw(streamId);
 
-        uint256 expectedTotalFee =
-            10 ether / 100;
+        uint256 expectedTotalFee = 10 ether / 100;
 
-        uint256 expectedEmployeeAmount =
-            10 ether - expectedTotalFee;
+        uint256 expectedEmployeeAmount = 10 ether - expectedTotalFee;
 
-        assertEq(
-            streamPay.adminWithdrawable(),
-            expectedTotalFee
-        );
+        assertEq(streamPay.adminWithdrawable(), expectedTotalFee);
 
-        assertEq(
-            employee.balance -
-                employeeBalanceBefore,
-            expectedEmployeeAmount
-        );
+        assertEq(employee.balance - employeeBalanceBefore, expectedEmployeeAmount);
     }
 
     // ---------------------------------------------------------
@@ -303,66 +217,40 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testCancellationPaysVestedAndRefundsUnvestedETH() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         vm.warp(stream.startTime + 50);
 
-        uint256 employeeBefore =
-            employee.balance;
+        uint256 employeeBefore = employee.balance;
 
-        uint256 employerBefore =
-            employer.balance;
+        uint256 employerBefore = employer.balance;
 
         vm.prank(employer);
         streamPay.cancelStream(streamId);
 
         // 50% vested = 5 ETH.
-        uint256 vestedAmount =
-            5 ether;
+        uint256 vestedAmount = 5 ether;
 
-        uint256 expectedFee =
-            vestedAmount / 100;
+        uint256 expectedFee = vestedAmount / 100;
 
-        uint256 expectedEmployeeAmount =
-            vestedAmount - expectedFee;
+        uint256 expectedEmployeeAmount = vestedAmount - expectedFee;
 
         // Remaining 5 ETH goes back to Employer.
-        uint256 expectedEmployerRefund =
-            5 ether;
+        uint256 expectedEmployerRefund = 5 ether;
 
-        assertEq(
-            employee.balance -
-                employeeBefore,
-            expectedEmployeeAmount
-        );
+        assertEq(employee.balance - employeeBefore, expectedEmployeeAmount);
 
-        assertEq(
-            employer.balance -
-                employerBefore,
-            expectedEmployerRefund
-        );
+        assertEq(employer.balance - employerBefore, expectedEmployerRefund);
 
-        assertEq(
-            streamPay.adminWithdrawable(),
-            expectedFee
-        );
+        assertEq(streamPay.adminWithdrawable(), expectedFee);
 
-        StreamPay.Stream memory updated =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory updated = streamPay.getStream(streamId);
 
-        assertEq(
-            uint256(updated.status),
-            uint256(StreamPay.StreamStatus.Closed)
-        );
+        assertEq(uint256(updated.status), uint256(StreamPay.StreamStatus.Closed));
 
-        assertEq(
-            updated.totalWithdrawn,
-            vestedAmount
-        );
+        assertEq(updated.totalWithdrawn, vestedAmount);
     }
 
     // ---------------------------------------------------------
@@ -370,24 +258,18 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testEmployeeCanCancelStream() public {
-        uint256 streamId =
-            _createStream(2 ether, 20);
+        uint256 streamId = _createStream(2 ether, 20);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         vm.warp(stream.startTime + 10);
 
         vm.prank(employee);
         streamPay.cancelStream(streamId);
 
-        StreamPay.Stream memory updated =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory updated = streamPay.getStream(streamId);
 
-        assertEq(
-            uint256(updated.status),
-            uint256(StreamPay.StreamStatus.Closed)
-        );
+        assertEq(uint256(updated.status), uint256(StreamPay.StreamStatus.Closed));
     }
 
     // ---------------------------------------------------------
@@ -395,14 +277,11 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testUnauthorizedAccountCannotCancelStream() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
         vm.prank(outsider);
 
-        vm.expectRevert(
-            bytes("Not authorized")
-        );
+        vm.expectRevert(bytes("Not authorized"));
 
         streamPay.cancelStream(streamId);
     }
@@ -412,40 +291,26 @@ contract StreamPayTest is Test {
     // ---------------------------------------------------------
 
     function testAdminCanClaimProtocolFees() public {
-        uint256 streamId =
-            _createStream(10 ether, 100);
+        uint256 streamId = _createStream(10 ether, 100);
 
-        StreamPay.Stream memory stream =
-            streamPay.getStream(streamId);
+        StreamPay.Stream memory stream = streamPay.getStream(streamId);
 
         vm.warp(stream.startTime + 50);
 
         vm.prank(employee);
         streamPay.withdraw(streamId);
 
-        uint256 expectedFee =
-            5 ether / 100;
+        uint256 expectedFee = 5 ether / 100;
 
-        assertEq(
-            streamPay.adminWithdrawable(),
-            expectedFee
-        );
+        assertEq(streamPay.adminWithdrawable(), expectedFee);
 
-        uint256 adminBalanceBefore =
-            admin.balance;
+        uint256 adminBalanceBefore = admin.balance;
 
         vm.prank(admin);
         streamPay.claimAdminFees();
 
-        assertEq(
-            admin.balance -
-                adminBalanceBefore,
-            expectedFee
-        );
+        assertEq(admin.balance - adminBalanceBefore, expectedFee);
 
-        assertEq(
-            streamPay.adminWithdrawable(),
-            0
-        );
+        assertEq(streamPay.adminWithdrawable(), 0);
     }
 }
